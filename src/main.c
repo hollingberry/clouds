@@ -6,12 +6,7 @@
 
 #include <GLFW/glfw3.h>
 
-#define WINDOW_WIDTH   800
-#define WINDOW_HEIGHT  600
-#define WINDOW_TITLE   "Clouds"
 #define WINDOW_COLOR   0, 0.597, .797, 1.0
-
-#define WIREFRAME_MODE 0
 
 GLfloat vertices[] = {
   -0.5,  0.5, 0.0, // top left
@@ -41,7 +36,7 @@ void main() {\n\
   color = vec4(1.0, 0.5, 0.2, 1.0);\n\
 }";
 
-void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mode) {
+void onKey(GLFWwindow *window, int key, int scancode, int action, int mode) {
   if (action == GLFW_PRESS) {
     switch (key) {
       case GLFW_KEY_ESCAPE:
@@ -51,67 +46,69 @@ void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mode
   }
 }
 
-int main() {
-  glfwInit();
+GLFWwindow *createWindow() {
+  GLFWwindow *window;
+
+  if (!glfwInit())
+    return NULL;
+
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
   glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
   glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
 
-  GLFWwindow *window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE, NULL, NULL);
-  if (window == NULL) {
-    printf("Failed to create GLFW window\n");
+  window = glfwCreateWindow(800, 600, "Clouds", NULL, NULL);
+  if (!window) {
     glfwTerminate();
-    return -1;
+    return NULL;
   }
+
   glfwMakeContextCurrent(window);
-  glfwSetKeyCallback(window, keyCallback);
+  glfwSetKeyCallback(window, onKey);
 
+  return window;
+}
+
+void initGlew() {
   glewExperimental = GL_TRUE;
-  if (glewInit() != GLEW_OK) {
-    printf("Failed to initialize GLEW\n");
-    return -1;
-  }
+  if (!glewInit())
+    fprintf(stderr, "failed to initialize glew\n");
+}
 
+void setViewport(GLFWwindow *window) {
   int width, height;
   glfwGetFramebufferSize(window, &width, &height);
   glViewport(0, 0, width, height);
+}
 
-  if (WIREFRAME_MODE)
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+GLuint compileShader(GLenum shaderType, const GLchar **source, const GLint *length) {
+  GLuint shader;
+  GLint success;
+  GLchar infoLog[512];
 
-  // compile vertex shader
-  GLuint vertexShader;
-  vertexShader = glCreateShader(GL_VERTEX_SHADER);
-  glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-  glCompileShader(vertexShader);
-  {
-    // check if source compiled alright
-    GLint success;
-    GLchar infoLog[512];
-    glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-      glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-      fprintf(stderr, "error: vertex shader compilation failed\n%s", infoLog);
-    }
+  shader = glCreateShader(shaderType);
+  glShaderSource(shader, 1, source, length);
+  glCompileShader(shader);
+  
+  glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+  if (!success) {
+    glGetShaderInfoLog(shader, 512, NULL, infoLog);
+    fprintf(stderr, "error: shader compilation vailed\n%s", infoLog);
+    return -1;
   }
 
-  // compile fragment shader
-  GLuint fragmentShader;
-  fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-  glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-  glCompileShader(fragmentShader);
-  {
-    // check if source compiled alright
-    GLint success;
-    GLchar infoLog[512];
-    glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-    if (!success) {
-      glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-      fprintf(stderr, "error: fragment shader compilation failed\n%s", infoLog);
-    }
-  }
+  return shader;
+}
+
+
+int main() {
+  GLFWwindow *window = createWindow();
+  initGlew();
+  setViewport(window);
+
+  GLuint vertexShader = compileShader(GL_VERTEX_SHADER, &vertexShaderSource, NULL);
+  GLuint fragmentShader = compileShader(GL_FRAGMENT_SHADER, &fragmentShaderSource, NULL);
 
   // build shader program
   GLuint shaderProgram;

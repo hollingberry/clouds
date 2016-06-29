@@ -1,2 +1,4 @@
-main: main.c
-	clang -o $@ $< -lGLEW -lglfw3 -framework OpenGL
+all: main
+
+main: src/main.c
+	clang -o $@ $< -Iinclude -lGLEW -lglfw3 -framework OpenGL
